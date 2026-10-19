@@ -4,7 +4,26 @@ Implementation of two Spring Boot microservices (`auth-api` and `data-api`) with
 
 ---
 
-## 🏗 Architecture
+## Table of Contents
+
+- [Architecture](#architecture)
+- [Environment Variables](#environment-variables)
+- [Build and Run](#build-and-run)
+  - [Option 1: Run directly with Docker Compose (Recommended)](#option-1-run-directly-with-docker-compose-recommended)
+  - [Option 2: Build locally with Maven first](#option-2-build-locally-with-maven-first)
+- [Testing Guide (cURL)](#testing-guide-curl)
+  - [1. Register a new user](#1-register-a-new-user)
+  - [2. Login and retrieve JWT token](#2-login-and-retrieve-jwt-token)
+  - [3. Call protected endpoint /api/process](#3-call-protected-endpoint-apiprocess)
+  - [4. Verify Service B (data-api) security directly](#4-verify-service-b-data-api-security-directly)
+  - [5. Verify database records in PostgreSQL](#5-verify-database-records-in-postgresql)
+- [Data Model (PostgreSQL)](#data-model-postgresql)
+  - [users table](#users-table)
+  - [processing_log table](#processing_log-table)
+
+---
+
+## Architecture
 
 * **Service A (`auth-api`, port 8080)**:
   * Tech stack: Spring Boot (Web, Security, Data JPA).
@@ -24,7 +43,7 @@ Implementation of two Spring Boot microservices (`auth-api` and `data-api`) with
 
 ---
 
-## ⚙️ Environment Variables
+## Environment Variables
 
 | Variable | Description | Default Value |
 |---|---|---|
@@ -37,7 +56,7 @@ Implementation of two Spring Boot microservices (`auth-api` and `data-api`) with
 
 ---
 
-## 🚀 Build & Run
+## Build and Run
 
 ### Option 1: Run directly with Docker Compose (Recommended)
 Thanks to multi-stage builds in the `Dockerfile`s, Docker compiles and packages the applications inside isolated containers:
@@ -63,7 +82,7 @@ docker compose down
 
 ---
 
-## 🧪 Testing Guide (cURL)
+## Testing Guide (cURL)
 
 ### 1. Register a new user
 ```bash
@@ -75,7 +94,7 @@ curl -i -X POST http://localhost:8080/api/auth/register \
 
 ---
 
-### 2. Login & retrieve JWT token
+### 2. Login and retrieve JWT token
 ```bash
 curl -i -X POST http://localhost:8080/api/auth/login \
   -H "Content-Type: application/json" \
@@ -95,7 +114,7 @@ TOKEN="<paste_jwt_token_here>"
 
 ---
 
-### 3. Call protected endpoint `/api/process` (Service A -> Service B -> PostgreSQL)
+### 3. Call protected endpoint /api/process
 
 ```bash
 curl -i -X POST http://localhost:8080/api/process \
@@ -120,7 +139,7 @@ curl -i -X POST http://localhost:8080/api/process \
 
 ---
 
-### 4. Verify Service B (`data-api`) security directly
+### 4. Verify Service B (data-api) security directly
 
 #### Request without the internal token:
 ```bash
@@ -149,21 +168,21 @@ curl -i -X POST http://localhost:8081/api/transform \
 ### 5. Verify database records in PostgreSQL
 
 Connect to the PostgreSQL container and inspect the audit log table:
-```baseyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJlM2E0MzM2Ni1hODg3LTQ1ZWQtYjU1NS01MzczNzIyMzljZmEiLCJlbWFpbCI6InRlc3RAd2lud2luLnRyYXZlbCIsImlhdCI6MTc5MjQyOTI4NSwiZXhwIjoxNzkzMTQ5Mjg1fQ.bdgUH-eGDnjC6LEvA4akkl_DR9wqUM9mMHDQ9LKjrvEh
+```bash
 docker exec -it postgres psql -U postgres -d winwindb -c "SELECT * FROM processing_log;"
 ```
 
 ---
 
-## 🗄 Data Model (PostgreSQL)
+## Data Model (PostgreSQL)
 
-### `users` table:
+### users table
 * `id` — UUID (Primary Key).
 * `email` — VARCHAR, UNIQUE.
 * `password` — VARCHAR (BCrypt hash).
 * `created_at` — TIMESTAMP.
 
-### `processing_log` table:
+### processing_log table
 * `id` — UUID (Primary Key).
 * `user_id` — UUID (User reference).
 * `input_text` — TEXT (Input text payload).
