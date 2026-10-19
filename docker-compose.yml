@@ -1,0 +1,67 @@
+version: "3.8"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: postgres
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-winwindb}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-winwindb}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - winwin-network
+
+  data-api:
+    build:
+      context: ./transformservice/transform
+      dockerfile: Dockerfile
+    container_name: data-api
+    ports:
+      - "8081:8081"
+    environment:
+      SERVER_PORT: 8081
+      INTERNAL_TOKEN: ${INTERNAL_TOKEN:-my-secret-internal-token}
+    networks:
+      - winwin-network
+
+  auth-api:
+    build:
+      context: ./authservice/auth
+      dockerfile: Dockerfile
+    container_name: auth-api
+    ports:
+      - "8080:8080"
+    environment:
+      POSTGRES_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-winwindb}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-winwindb}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-postgres}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      JWT_SECRET: ${JWT_SECRET:-my-default-secret-key-that-is-long-enough-32-bytes}
+      INTERNAL_TOKEN: ${INTERNAL_TOKEN:-my-secret-internal-token}
+      TRANSFORM_SERVICE_URL: http://data-api:8081
+    depends_on:
+      postgres:
+        condition: service_healthy
+      data-api:
+        condition: service_started
+    networks:
+      - winwin-network
+
+networks:
+  winwin-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+
